@@ -31,15 +31,20 @@ log "RDS $DB_ID:                         $(db_status | grep . || echo 'no existe
 log "Entorno $ENV_NAME:                  $(env_status | grep . || echo 'no existe')"
 $CHECK_ONLY && { log "--check: no se creó nada"; exit 0; }
 
-# ---- 1. Secretos (antes de tocar nada: si faltan y la infra existe, aborta) ----------------------------------------------------------------------------
+# ---- 1. Secretos (antes de tocar nada: si faltan y la infra existe, aborta) -----------------
+# Se ignoran DB_PASSWORD / STATIC_TOKEN del shell (p. ej. exportadas en ~/.zshrc para otro proyecto);
+# solo cuentan el archivo de secretos o, para forzar un valor, INFRA_DB_PASSWORD / INFRA_STATIC_TOKEN.
+unset DB_PASSWORD STATIC_TOKEN
 if [ -f "$SECRETS_FILE" ]; then
   # shellcheck disable=SC1090
   source "$SECRETS_FILE"
 fi
-if [ ! -f "$SECRETS_FILE" ] && { [ -n "$(db_status)" ] || [ -n "$(env_status)" ]; }; then
+if [ ! -f "$SECRETS_FILE" ] && [ -z "${INFRA_DB_PASSWORD:-}" ] && { [ -n "$(db_status)" ] || [ -n "$(env_status)" ]; }; then
   die "Ya existe la base o el entorno pero falta $SECRETS_FILE: generar una contraseña nueva no coincidiría con la real. Corre infra-down.sh primero, o crea el archivo con DB_PASSWORD y STATIC_TOKEN."
 fi
-if [ -z "${DB_PASSWORD:-}" ] || [ -z "${STATIC_TOKEN:-}" ]; then
+DB_PASSWORD="${DB_PASSWORD:-${INFRA_DB_PASSWORD:-}}"
+STATIC_TOKEN="${STATIC_TOKEN:-${INFRA_STATIC_TOKEN:-}}"
+if [ -z "$DB_PASSWORD" ] || [ -z "$STATIC_TOKEN" ]; then
   command -v openssl >/dev/null || die "Se necesita openssl para generar los secretos"
   DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -hex 16)}"   # solo [0-9a-f]: no necesita escapes en URLs
   STATIC_TOKEN="${STATIC_TOKEN:-$(openssl rand -hex 24)}"
@@ -47,6 +52,9 @@ if [ -z "${DB_PASSWORD:-}" ] || [ -z "${STATIC_TOKEN:-}" ]; then
   printf 'DB_PASSWORD=%s\nSTATIC_TOKEN=%s\n' "$DB_PASSWORD" "$STATIC_TOKEN" > "$SECRETS_FILE"
   log "Secretos generados en $SECRETS_FILE"
 fi
+# RDS exige 8+ caracteres, y con solo letras y números la contraseña va tal cual en DATABASE_URL.
+[[ "$DB_PASSWORD" =~ ^[A-Za-z0-9]{8,}$ ]] || die "DB_PASSWORD debe tener 8+ caracteres alfanuméricos (revisa $SECRETS_FILE)"
+[[ "$STATIC_TOKEN" =~ ^[A-Za-z0-9]{16,}$ ]] || die "STATIC_TOKEN debe tener 16+ caracteres alfanuméricos (revisa $SECRETS_FILE)"
 
 # ---- 2. IAM ---------------------------------------------------------------------------------
 trust() { printf '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"%s"},"Action":"sts:AssumeRole"}]}' "$1"; }

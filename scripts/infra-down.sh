@@ -17,6 +17,18 @@ if [ "${1:-}" != "--yes" ]; then
   [ "$ans" = "$ENV_NAME" ] || die "Cancelado"
 fi
 
+# El security group de las instancias no se puede borrar mientras la regla 5432 de la base lo
+# referencie (el entorno falla con "has a dependent object"), así que se quita antes.
+SG="$(rds_sg_id "$VPC")"
+if [ -n "$SG" ]; then
+  while read -r src; do
+    [ -n "$src" ] || continue
+    log "Quitando de $RDS_SG_NAME la regla 5432 desde $src"
+    aws ec2 revoke-security-group-ingress --group-id "$SG" --protocol tcp --port 5432 --source-group "$src" >/dev/null
+  done < <(aws ec2 describe-security-groups --group-ids "$SG" \
+             --query 'SecurityGroups[0].IpPermissions[?FromPort==`5432`].UserIdGroupPairs[].GroupId' --output text | tr '\t' '\n')
+fi
+
 if [ -n "$(env_status)" ]; then
   log "Terminando el entorno $ENV_NAME..."
   aws elasticbeanstalk terminate-environment --environment-name "$ENV_NAME" >/dev/null
