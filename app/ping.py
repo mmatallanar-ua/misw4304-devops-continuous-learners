@@ -10,8 +10,8 @@ _VERSION_FILE = Path(__file__).resolve().parent.parent / "VERSION"
 
 
 def _version():
-    """Etiqueta de la versión desplegada. Sale del archivo VERSION que `scripts/build-bundle.sh`
-    agrega al zip; sin él (local, tests) vale "dev"."""
+    """Etiqueta de la versión desplegada, leída del archivo VERSION en la raíz del paquete.
+    Sin ese archivo (local, tests) vale "dev"."""
     try:
         return _VERSION_FILE.read_text().strip() or "dev"
     except OSError:
