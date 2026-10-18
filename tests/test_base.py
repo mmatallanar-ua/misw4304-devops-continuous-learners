@@ -36,7 +36,11 @@ def test_token_valido_200(app, client):
 def test_ping_con_base_de_datos(client):
     resp = client.get("/ping")
     assert resp.status_code == 200
-    assert resp.get_json() == {"message": "pong", "database": "ok"}
+    body = resp.get_json()
+    assert body["message"] == "pong"
+    assert body["database"] == "ok"
+    assert body["version"] == "dev"
+    assert body["instance"]
 
 
 def test_ping_con_base_caida_503(app, client, monkeypatch):
