@@ -10,9 +10,23 @@ from .models import BlacklistEntry
 
 
 class BlacklistCreate(Resource):
-    email_field = fields.Email(validate=validate.Length(max=255))
-    app_uuid_field = fields.UUID()
-    reason_field = fields.String(validate=validate.Length(max=255))
+    email_field = fields.Email(
+        validate=validate.Length(max=255, error="No puede superar los 255 caracteres."),
+        error_messages={
+            "null": "Este campo es obligatorio.",
+            "invalid": "No es un email válido.",
+        },
+    )
+    app_uuid_field = fields.UUID(
+        error_messages={
+            "null": "Este campo es obligatorio.",
+            "invalid_uuid": "No es un UUID válido.",
+        },
+    )
+    reason_field = fields.String(
+        validate=validate.Length(max=255, error="No puede superar los 255 caracteres."),
+        error_messages={"invalid": "Debe ser una cadena de texto."},
+    )
 
     @token_required
     def post(self):

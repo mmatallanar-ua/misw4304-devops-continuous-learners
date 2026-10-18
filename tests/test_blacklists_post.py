@@ -159,6 +159,31 @@ def test_datos_invalidos_devuelven_400_sin_crear_registro(client, payload):
     assert count_entries() == 0
 
 
+@pytest.mark.parametrize(
+    ("payload", "field", "expected_message"),
+    [
+        ({"app_uuid": VALID_UUID}, "email", "Este campo es obligatorio."),
+        ({"email": "sin-arroba", "app_uuid": VALID_UUID}, "email", "No es un email válido."),
+        ({"email": "cliente@example.com"}, "app_uuid", "Este campo es obligatorio."),
+        (
+            {"email": "cliente@example.com", "app_uuid": "no-es-uuid"},
+            "app_uuid",
+            "No es un UUID válido.",
+        ),
+        (
+            {"email": "cliente@example.com", "app_uuid": VALID_UUID, "blocked_reason": "a" * 256},
+            "blocked_reason",
+            "No puede superar los 255 caracteres.",
+        ),
+    ],
+)
+def test_mensajes_de_error_en_espanol(client, payload, field, expected_message):
+    response = create(client, payload)
+
+    assert response.status_code == 400
+    assert response.get_json()["errors"][field] == [expected_message]
+
+
 def test_cuerpo_no_json_devuelve_400(client):
     response = client.post("/blacklists", data="no-es-json", content_type="text/plain", headers=AUTH)
 

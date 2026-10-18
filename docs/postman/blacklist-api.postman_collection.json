@@ -51,6 +51,86 @@
       "name": "Agregar email",
       "item": [
         {
+          "name": "Sembrar email bloqueado (para Consultar email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{blocked_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\",\n  \"blocked_reason\": \"{{expected_reason}}\"\n}"
+            },
+            "url": "{{base_url}}/blacklists",
+            "description": "Crea el registro que esperan los escenarios 'Email registrado' y 'Consulta en mayúsculas' de la carpeta Consultar email. Ejecutar antes de esa carpeta (se puede repetir: los duplicados están permitidos)."
+          },
+          "response": []
+        },
+        {
+          "name": "Sembrar email sin motivo (para Consultar email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{no_reason_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\"\n}"
+            },
+            "url": "{{base_url}}/blacklists",
+            "description": "Crea el registro que espera el escenario 'Email registrado sin motivo' de la carpeta Consultar email. Ejecutar antes de esa carpeta (se puede repetir: los duplicados están permitidos)."
+          },
+          "response": []
+        },
+        {
           "name": "Registro exitoso con motivo",
           "event": [
             {
@@ -70,12 +150,19 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "auth": {
               "type": "bearer",
               "bearer": [
-                { "key": "token", "value": "{{token}}", "type": "string" }
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -90,7 +177,12 @@
               "name": "Registro exitoso con motivo",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\",\n  \"blocked_reason\": \"Fraude reportado\"\n}"
@@ -99,7 +191,12 @@
               },
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"message\": \"Email agregado a la lista negra global\"\n}"
             }
           ]
@@ -122,11 +219,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "auth": {
               "type": "bearer",
               "bearer": [
-                { "key": "token", "value": "{{token}}", "type": "string" }
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -141,7 +247,12 @@
               "name": "Registro exitoso sin motivo",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\"\n}"
@@ -150,7 +261,12 @@
               },
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"message\": \"Email agregado a la lista negra global\"\n}"
             }
           ]
@@ -173,11 +289,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "auth": {
               "type": "bearer",
               "bearer": [
-                { "key": "token", "value": "{{token}}", "type": "string" }
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -192,14 +317,27 @@
               "name": "app_uuid ausente",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{new_email}}\"\n}" },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{new_email}}\"\n}"
+                },
                 "url": "{{base_url}}/blacklists"
               },
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"message\": \"Datos inválidos\",\n  \"errors\": {\"app_uuid\": [\"Missing data for required field.\"]}\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Datos inválidos\",\n  \"errors\": {\"app_uuid\": [\"Este campo es obligatorio.\"]}\n}"
             }
           ]
         },
@@ -221,11 +359,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "auth": {
               "type": "bearer",
               "bearer": [
-                { "key": "token", "value": "{{token}}", "type": "string" }
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -240,7 +387,12 @@
               "name": "app_uuid inválido",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"no-es-un-uuid\"\n}"
@@ -249,8 +401,13 @@
               },
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"message\": \"Datos inválidos\",\n  \"errors\": {\"app_uuid\": [\"Not a valid UUID.\"]}\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Datos inválidos\",\n  \"errors\": {\"app_uuid\": [\"No es un UUID válido.\"]}\n}"
             }
           ]
         },
@@ -272,11 +429,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "auth": {
               "type": "bearer",
               "bearer": [
-                { "key": "token", "value": "{{token}}", "type": "string" }
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -291,14 +457,27 @@
               "name": "blocked_reason demasiado largo",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\",\n  \"blocked_reason\": \"...256 caracteres...\"\n}" },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\",\n  \"blocked_reason\": \"...256 caracteres...\"\n}"
+                },
                 "url": "{{base_url}}/blacklists"
               },
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"message\": \"Datos inválidos\",\n  \"errors\": {\"blocked_reason\": [\"Longer than maximum length 255.\"]}\n}"
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Datos inválidos\",\n  \"errors\": {\"blocked_reason\": [\"No puede superar los 255 caracteres.\"]}\n}"
             }
           ]
         },
@@ -320,8 +499,15 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "auth": { "type": "noauth" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "noauth"
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\"\n}"
@@ -334,15 +520,29 @@
               "name": "Token ausente",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\"\n}" },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\"\n}"
+                },
                 "url": "{{base_url}}/blacklists"
               },
               "status": "Unauthorized",
               "code": 401,
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
-                { "key": "WWW-Authenticate", "value": "Bearer" }
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "WWW-Authenticate",
+                  "value": "Bearer"
+                }
               ],
               "body": "{\n  \"message\": \"Falta el token de autorización\"\n}"
             }
@@ -364,11 +564,20 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "auth": {
               "type": "bearer",
               "bearer": [
-                { "key": "token", "value": "{{token}}-invalido", "type": "string" }
+                {
+                  "key": "token",
+                  "value": "{{token}}-invalido",
+                  "type": "string"
+                }
               ]
             },
             "body": {
@@ -383,15 +592,29 @@
               "name": "Token incorrecto",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\"\n}" },
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{new_email}}\",\n  \"app_uuid\": \"{{app_uuid}}\"\n}"
+                },
                 "url": "{{base_url}}/blacklists"
               },
               "status": "Unauthorized",
               "code": 401,
               "header": [
-                { "key": "Content-Type", "value": "application/json" },
-                { "key": "WWW-Authenticate", "value": "Bearer" }
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "WWW-Authenticate",
+                  "value": "Bearer"
+                }
               ],
               "body": "{\n  \"message\": \"Token inválido\"\n}"
             }
@@ -410,7 +633,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\")));"
+                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.variables.get(\"blocked_email\")));"
                 ]
               }
             },
@@ -425,7 +648,7 @@
                   "pm.test(\"Contrato de consulta\", () => {",
                   "  pm.expect(body).to.have.all.keys(\"blacklisted\", \"blocked_reason\");",
                   "  pm.expect(body.blacklisted).to.eql(true);",
-                  "  pm.expect(body.blocked_reason).to.eql(pm.collectionVariables.get(\"expected_reason\"));",
+                  "  pm.expect(body.blocked_reason).to.eql(pm.variables.get(\"expected_reason\"));",
                   "});"
                 ]
               }
@@ -486,7 +709,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"absent_email\")));"
+                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.variables.get(\"absent_email\")));"
                 ]
               }
             },
@@ -562,7 +785,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"no_reason_email\")));"
+                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.variables.get(\"no_reason_email\")));"
                 ]
               }
             },
@@ -638,7 +861,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\") .toUpperCase()));"
+                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.variables.get(\"blocked_email\") .toUpperCase()));"
                 ]
               }
             },
@@ -653,7 +876,7 @@
                   "pm.test(\"Contrato de consulta\", () => {",
                   "  pm.expect(body).to.have.all.keys(\"blacklisted\", \"blocked_reason\");",
                   "  pm.expect(body.blacklisted).to.eql(true);",
-                  "  pm.expect(body.blocked_reason).to.eql(pm.collectionVariables.get(\"expected_reason\"));",
+                  "  pm.expect(body.blocked_reason).to.eql(pm.variables.get(\"expected_reason\"));",
                   "});"
                 ]
               }
@@ -777,7 +1000,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\")));"
+                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.variables.get(\"blocked_email\")));"
                 ]
               }
             },
@@ -839,7 +1062,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\")));"
+                  "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.variables.get(\"blocked_email\")));"
                 ]
               }
             },

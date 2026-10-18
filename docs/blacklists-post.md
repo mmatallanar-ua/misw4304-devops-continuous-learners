@@ -59,4 +59,7 @@ los errores 500/503.
 ## Pruebas en Postman
 
 Ver [`docs/postman/blacklist-api.postman_collection.json`](postman/blacklist-api.postman_collection.json),
-carpeta "Agregar email".
+carpeta "Agregar email". Sus dos primeras solicitudes ("Sembrar email bloqueado..." y "Sembrar
+email sin motivo...") crean los registros que después consume la carpeta "Consultar email" (ver
+[`docs/blacklists-get.md`](blacklists-get.md)); el resto cubre los casos de error de la tabla de
+respuestas.

@@ -69,11 +69,12 @@ registrado, sin motivo, mayúsculas, email inválido, token ausente y token inco
 ejemplos de respuesta están incluidos en cada solicitud. Los emails se codifican automáticamente
 en la ruta.
 
-Los registros de los escenarios positivos deben existir previamente en una base de pruebas: se
-pueden crear con la carpeta "Agregar email" de la misma colección (ver
-[`docs/blacklists-post.md`](blacklists-post.md)) o directamente en la base. Para comprobar
-duplicados manualmente, preparar varios registros del mismo email con distintas fechas y ajustar
-`expected_reason` al motivo más reciente.
+Los registros de los escenarios positivos deben existir previamente en una base de pruebas. Las
+dos primeras solicitudes de la carpeta "Agregar email" ("Sembrar email bloqueado..." y "Sembrar
+email sin motivo...") crean exactamente los registros que usa `blocked_email`/`expected_reason` y
+`no_reason_email`; ejecutarlas (o correr la colección completa en orden) antes de la carpeta
+"Consultar email". Para comprobar duplicados manualmente, preparar varios registros del mismo
+email con distintas fechas y ajustar `expected_reason` al motivo más reciente.
 
 El escenario 503 se cubre automáticamente mediante un fallo controlado; la colección no
 interrumpe la base de datos. Usar un token exclusivo de pruebas y mantenerlo fuera del repositorio.
