@@ -1,7 +1,8 @@
 # misw4304-devops-continuous-learners
 
 Microservicio Flask de **lista negra global de emails** (Entrega 1 · Despliegue manual en AWS
-Elastic Beanstalk). Historias de usuario en [`docs/historias-entrega1.md`](docs/historias-entrega1.md).
+Elastic Beanstalk). Documentación de los endpoints: [`docs/blacklists-post.md`](docs/blacklists-post.md)
+y [`docs/blacklists-get.md`](docs/blacklists-get.md).
 
 ## Correr en local
 
@@ -22,6 +23,12 @@ Sin `DATABASE_URL` ni `RDS_*` usa SQLite local (`local.db`), solo para desarroll
 ```bash
 python -m pytest
 ```
+
+## Agregar un email a la lista negra
+
+`POST /blacklists` requiere `Authorization: Bearer <STATIC_TOKEN>` y un cuerpo JSON con `email`,
+`app_uuid` (UUID) y, opcionalmente, `blocked_reason` (máx. 255 caracteres). Guarda la IP real del
+cliente y la fecha/hora de la solicitud. Ver el [contrato completo](docs/blacklists-post.md).
 
 ## Consultar la lista negra
 
