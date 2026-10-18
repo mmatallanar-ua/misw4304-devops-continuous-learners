@@ -1,0 +1,11 @@
+.git/
+.venv/
+.env
+.pytest_cache/
+__pycache__/
+tests/
+docs/
+postman/
+docker-compose.yml
+*.db
+*.zip
