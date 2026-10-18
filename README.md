@@ -23,6 +23,15 @@ Sin `DATABASE_URL` ni `RDS_*` usa SQLite local (`local.db`), solo para desarroll
 python -m pytest
 ```
 
+## Consultar la lista negra
+
+`GET /blacklists/<string:email>` requiere `Authorization: Bearer <STATIC_TOKEN>` y devuelve
+`blacklisted` (booleano) y `blocked_reason` (texto o `null`). La consulta ignora mayúsculas y,
+si hay duplicados, usa el registro más reciente por fecha y luego por id.
+
+Ver el [contrato y los escenarios de prueba](docs/blacklists-get.md) y la
+[colección de Postman](docs/postman/blacklists-get.postman_collection.json).
+
 ## Variables de entorno
 
 | Variable | Uso |

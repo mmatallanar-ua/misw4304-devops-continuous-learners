@@ -1,0 +1,546 @@
+{
+  "info": {
+    "name": "Lista negra - consulta de email",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Escenarios GET /blacklists/<email>. Configurar las variables y preparar los registros en una base de pruebas según docs/blacklists-get.md. No realiza escrituras."
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "blocked_email",
+      "value": "cliente@example.com",
+      "type": "string"
+    },
+    {
+      "key": "expected_reason",
+      "value": "Uso indebido",
+      "type": "string"
+    },
+    {
+      "key": "no_reason_email",
+      "value": "sin-motivo@example.com",
+      "type": "string"
+    },
+    {
+      "key": "absent_email",
+      "value": "ausente@example.com",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Email registrado",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\")));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Respuesta JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+              "const body = pm.response.json();",
+              "pm.test(\"Contrato de consulta\", () => {",
+              "  pm.expect(body).to.have.all.keys(\"blacklisted\", \"blocked_reason\");",
+              "  pm.expect(body.blacklisted).to.eql(true);",
+              "  pm.expect(body.blocked_reason).to.eql(pm.collectionVariables.get(\"expected_reason\"));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{base_url}}/blacklists/{{lookup_email}}",
+        "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+      },
+      "response": [
+        {
+          "name": "Email registrado",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{base_url}}/blacklists/{{lookup_email}}",
+            "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"blacklisted\": true,\n  \"blocked_reason\": \"Uso indebido\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Email no registrado",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"absent_email\")));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Respuesta JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+              "const body = pm.response.json();",
+              "pm.test(\"Contrato de consulta\", () => {",
+              "  pm.expect(body).to.have.all.keys(\"blacklisted\", \"blocked_reason\");",
+              "  pm.expect(body.blacklisted).to.eql(false);",
+              "  pm.expect(body.blocked_reason).to.eql(null);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{base_url}}/blacklists/{{lookup_email}}",
+        "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+      },
+      "response": [
+        {
+          "name": "Email no registrado",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{base_url}}/blacklists/{{lookup_email}}",
+            "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"blacklisted\": false,\n  \"blocked_reason\": null\n}"
+        }
+      ]
+    },
+    {
+      "name": "Email registrado sin motivo",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"no_reason_email\")));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Respuesta JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+              "const body = pm.response.json();",
+              "pm.test(\"Contrato de consulta\", () => {",
+              "  pm.expect(body).to.have.all.keys(\"blacklisted\", \"blocked_reason\");",
+              "  pm.expect(body.blacklisted).to.eql(true);",
+              "  pm.expect(body.blocked_reason).to.eql(null);",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{base_url}}/blacklists/{{lookup_email}}",
+        "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+      },
+      "response": [
+        {
+          "name": "Email registrado sin motivo",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{base_url}}/blacklists/{{lookup_email}}",
+            "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"blacklisted\": true,\n  \"blocked_reason\": null\n}"
+        }
+      ]
+    },
+    {
+      "name": "Consulta en mayúsculas",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\") .toUpperCase()));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+              "pm.test(\"Respuesta JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+              "const body = pm.response.json();",
+              "pm.test(\"Contrato de consulta\", () => {",
+              "  pm.expect(body).to.have.all.keys(\"blacklisted\", \"blocked_reason\");",
+              "  pm.expect(body.blacklisted).to.eql(true);",
+              "  pm.expect(body.blocked_reason).to.eql(pm.collectionVariables.get(\"expected_reason\"));",
+              "});"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{base_url}}/blacklists/{{lookup_email}}",
+        "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+      },
+      "response": [
+        {
+          "name": "Consulta en mayúsculas",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{base_url}}/blacklists/{{lookup_email}}",
+            "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+          },
+          "status": "OK",
+          "code": 200,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"blacklisted\": true,\n  \"blocked_reason\": \"Uso indebido\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Email inválido",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+              "pm.test(\"Respuesta JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+              "const body = pm.response.json();",
+              "pm.test(\"Error esperado\", () => { pm.expect(body).to.eql({message: \"Email inválido\"}); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{base_url}}/blacklists/sin-arroba",
+        "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+      },
+      "response": [
+        {
+          "name": "Email inválido",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{base_url}}/blacklists/sin-arroba",
+            "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+          },
+          "status": "Bad Request",
+          "code": 400,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"message\": \"Email inválido\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Token ausente",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\")));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+              "pm.test(\"Respuesta JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+              "const body = pm.response.json();",
+              "pm.test(\"Error esperado\", () => { pm.expect(pm.response.headers.get(\"WWW-Authenticate\")).to.eql(\"Bearer\"); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "noauth"
+        },
+        "url": "{{base_url}}/blacklists/{{lookup_email}}",
+        "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+      },
+      "response": [
+        {
+          "name": "Token ausente",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{base_url}}/blacklists/{{lookup_email}}",
+            "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "WWW-Authenticate",
+              "value": "Bearer"
+            }
+          ],
+          "body": "{\n  \"message\": \"Falta el token de autorización\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Token incorrecto",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.variables.set(\"lookup_email\", encodeURIComponent(pm.collectionVariables.get(\"blocked_email\")));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+              "pm.test(\"Respuesta JSON\", () => pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"application/json\"));",
+              "const body = pm.response.json();",
+              "pm.test(\"Error esperado\", () => { pm.expect(body).to.eql({message: \"Token inválido\"}); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [],
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}-invalido",
+              "type": "string"
+            }
+          ]
+        },
+        "url": "{{base_url}}/blacklists/{{lookup_email}}",
+        "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+      },
+      "response": [
+        {
+          "name": "Token incorrecto",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}-invalido",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{base_url}}/blacklists/{{lookup_email}}",
+            "description": "Requiere los datos previos y variables descritos en docs/blacklists-get.md."
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "key": "WWW-Authenticate",
+              "value": "Bearer"
+            }
+          ],
+          "body": "{\n  \"message\": \"Token inválido\"\n}"
+        }
+      ]
+    }
+  ]
+}
