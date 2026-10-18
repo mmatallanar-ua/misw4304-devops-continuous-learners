@@ -5,6 +5,7 @@ from flask_restful import Api
 from .config import Config
 from .extensions import db, ma
 from .health import Health
+from .ping import Ping
 
 
 def create_app(config=None):
@@ -18,6 +19,7 @@ def create_app(config=None):
 
     api = Api(app)
     api.add_resource(Health, "/health")
+    api.add_resource(Ping, "/ping")
 
     @app.cli.command("init-db")
     def init_db():
