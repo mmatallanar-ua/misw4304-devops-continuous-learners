@@ -13,7 +13,7 @@ docker compose down        # agregar -v para borrar los datos
 ## Despliegue manual en Elastic Beanstalk
 
 1. Empaquetar el código: `git archive -o deploy.zip HEAD` (solo archivos versionados).
-2. En el entorno, definir `DATABASE_URL` y `STATIC_TOKEN` en *Configuration → Environment properties*.
+2. En el entorno, definir `DATABASE_URL`, `STATIC_TOKEN` y `PROXY_X_FOR=2` (hay balanceador + nginx; sin esto la IP guardada es la de un proxy) en *Configuration → Environment properties*.
 3. Subir `deploy.zip` desde *Upload and deploy*.
 
 `.ebextensions/01_init_db.config` corre `init-db` en una instancia (`leader_only`) durante cada

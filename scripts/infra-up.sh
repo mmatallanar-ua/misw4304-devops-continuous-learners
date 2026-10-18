@@ -129,7 +129,8 @@ if [ -z "$(env_status)" ]; then
  {"Namespace":"aws:elasticbeanstalk:environment:process:default","OptionName":"HealthCheckPath","Value":"/health"},
  {"Namespace":"aws:elasticbeanstalk:healthreporting:system","OptionName":"SystemType","Value":"enhanced"},
  {"Namespace":"aws:elasticbeanstalk:application:environment","OptionName":"DATABASE_URL","Value":"postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:5432/$DB_NAME"},
- {"Namespace":"aws:elasticbeanstalk:application:environment","OptionName":"STATIC_TOKEN","Value":"$STATIC_TOKEN"}
+ {"Namespace":"aws:elasticbeanstalk:application:environment","OptionName":"STATIC_TOKEN","Value":"$STATIC_TOKEN"},
+ {"Namespace":"aws:elasticbeanstalk:application:environment","OptionName":"PROXY_X_FOR","Value":"2"}
 ]
 JSON
   aws elasticbeanstalk create-environment --application-name "$APP_NAME" --environment-name "$ENV_NAME" \
