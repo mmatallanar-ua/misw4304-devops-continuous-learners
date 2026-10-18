@@ -1,7 +1,8 @@
 # misw4304-devops-continuous-learners
 
 Microservicio Flask de **lista negra global de emails** (Entrega 1 · Despliegue manual en AWS
-Elastic Beanstalk). Historias de usuario en [`docs/historias-entrega1.md`](docs/historias-entrega1.md).
+Elastic Beanstalk). Documentación de los endpoints: [`docs/blacklists-post.md`](docs/blacklists-post.md)
+y [`docs/blacklists-get.md`](docs/blacklists-get.md).
 
 ## Correr en local
 
@@ -23,6 +24,12 @@ Sin `DATABASE_URL` ni `RDS_*` usa SQLite local (`local.db`), solo para desarroll
 python -m pytest
 ```
 
+## Agregar un email a la lista negra
+
+`POST /blacklists` requiere `Authorization: Bearer <STATIC_TOKEN>` y un cuerpo JSON con `email`,
+`app_uuid` (UUID) y, opcionalmente, `blocked_reason` (máx. 255 caracteres). Guarda la IP real del
+cliente y la fecha/hora de la solicitud. Ver el [contrato completo](docs/blacklists-post.md).
+
 ## Consultar la lista negra
 
 `GET /blacklists/<string:email>` requiere `Authorization: Bearer <STATIC_TOKEN>` y devuelve
@@ -30,7 +37,7 @@ python -m pytest
 si hay duplicados, usa el registro más reciente por fecha y luego por id.
 
 Ver el [contrato y los escenarios de prueba](docs/blacklists-get.md) y la
-[colección de Postman](docs/postman/blacklists-get.postman_collection.json).
+[colección de Postman](docs/postman/blacklist-api.postman_collection.json).
 
 ## Variables de entorno
 
@@ -39,6 +46,7 @@ Ver el [contrato y los escenarios de prueba](docs/blacklists-get.md) y la
 | `STATIC_TOKEN` | Bearer token estático que exigen los endpoints protegidos |
 | `DATABASE_URL` | Conexión a PostgreSQL |
 | `RDS_HOSTNAME`, `RDS_PORT`, `RDS_DB_NAME`, `RDS_USERNAME`, `RDS_PASSWORD` | Alternativa a `DATABASE_URL`; las inyecta Beanstalk con RDS asociada |
+| `PROXY_X_FOR` | Saltos de proxy de confianza para calcular la IP real del cliente (`ProxyFix`). `1` (por defecto) para una instancia única; `2` en un entorno con balanceador de carga (ALB + nginx) |
 
 ## Despliegue
 

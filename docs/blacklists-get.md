@@ -52,8 +52,8 @@ Estas pruebas no verifican el despliegue en AWS ni una conexión real con Postgr
 
 ## Pruebas en Postman
 
-Importar `postman/blacklists-get.postman_collection.json` y configurar estas variables de
-la colección:
+Importar `postman/blacklist-api.postman_collection.json` (carpeta "Consultar email") y
+configurar estas variables de la colección:
 
 | Variable | Valor |
 |---|---|
@@ -64,14 +64,17 @@ la colección:
 | `no_reason_email` | Email registrado cuyo motivo sea `null` |
 | `absent_email` | Email que no esté registrado |
 
-La colección incluye solicitudes y comprobaciones para email registrado, no registrado,
-sin motivo, mayúsculas, email inválido, token ausente y token incorrecto. Los ejemplos de
-respuesta están incluidos en cada solicitud. Los emails se codifican automáticamente en la ruta.
+La carpeta "Consultar email" incluye solicitudes y comprobaciones para email registrado, no
+registrado, sin motivo, mayúsculas, email inválido, token ausente y token incorrecto. Los
+ejemplos de respuesta están incluidos en cada solicitud. Los emails se codifican automáticamente
+en la ruta.
 
-Los registros de los escenarios positivos deben existir previamente en una base de pruebas.
-Esta colección solo consulta: no agrega registros ni presupone que el endpoint POST ya esté
-implementado. Para comprobar duplicados manualmente, preparar varios registros del mismo email
-con distintas fechas y ajustar `expected_reason` al motivo más reciente.
+Los registros de los escenarios positivos deben existir previamente en una base de pruebas. Las
+dos primeras solicitudes de la carpeta "Agregar email" ("Sembrar email bloqueado..." y "Sembrar
+email sin motivo...") crean exactamente los registros que usa `blocked_email`/`expected_reason` y
+`no_reason_email`; ejecutarlas (o correr la colección completa en orden) antes de la carpeta
+"Consultar email". Para comprobar duplicados manualmente, preparar varios registros del mismo
+email con distintas fechas y ajustar `expected_reason` al motivo más reciente.
 
 El escenario 503 se cubre automáticamente mediante un fallo controlado; la colección no
 interrumpe la base de datos. Usar un token exclusivo de pruebas y mantenerlo fuera del repositorio.
