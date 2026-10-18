@@ -37,7 +37,7 @@ cliente y la fecha/hora de la solicitud. Ver el [contrato completo](docs/blackli
 si hay duplicados, usa el registro más reciente por fecha y luego por id.
 
 Ver el [contrato y los escenarios de prueba](docs/blacklists-get.md) y la
-[colección de Postman](docs/postman/blacklists-get.postman_collection.json).
+[colección de Postman](docs/postman/blacklist-api.postman_collection.json).
 
 ## Variables de entorno
 
