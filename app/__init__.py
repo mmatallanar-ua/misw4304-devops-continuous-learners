@@ -2,6 +2,7 @@ import click
 from flask import Flask
 from flask_restful import Api
 
+from .blacklists import BlacklistLookup
 from .config import Config
 from .extensions import db, ma
 from .health import Health
@@ -20,6 +21,7 @@ def create_app(config=None):
     api = Api(app)
     api.add_resource(Health, "/health")
     api.add_resource(Ping, "/ping")
+    api.add_resource(BlacklistLookup, "/blacklists/<string:email>")
 
     @app.cli.command("init-db")
     def init_db():
