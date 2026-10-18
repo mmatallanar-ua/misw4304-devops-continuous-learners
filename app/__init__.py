@@ -17,8 +17,9 @@ def create_app(config=None):
         app.config.update(config)
 
     # Beanstalk pone nginx/ELB delante de la app: sin esto, request.remote_addr
-    # sería la IP interna del proxy y no la del cliente real.
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1)
+    # sería la IP interna del proxy y no la del cliente real. PROXY_X_FOR debe ser 2 en un
+    # entorno con balanceador de carga (ALB + nginx = dos saltos) y 1 en una instancia única.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=app.config["PROXY_X_FOR"])
 
     db.init_app(app)
     ma.init_app(app)

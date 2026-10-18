@@ -5,6 +5,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy.exc import OperationalError
 
+from app import create_app
 from app.extensions import db
 from app.models import BlacklistEntry
 
@@ -49,6 +50,37 @@ def test_blocked_reason_es_opcional(client):
     assert entry.blocked_reason is None
 
 
+def test_blocked_reason_de_255_caracteres_se_acepta(client):
+    reason = "a" * 255
+    response = create(
+        client, {"email": "cliente@example.com", "app_uuid": VALID_UUID, "blocked_reason": reason}
+    )
+
+    assert response.status_code == 201
+    entry = db.session.execute(db.select(BlacklistEntry)).scalar_one()
+    assert entry.blocked_reason == reason
+
+
+def test_blocked_reason_null_se_guarda_como_none(client):
+    response = create(
+        client, {"email": "cliente@example.com", "app_uuid": VALID_UUID, "blocked_reason": None}
+    )
+
+    assert response.status_code == 201
+    entry = db.session.execute(db.select(BlacklistEntry)).scalar_one()
+    assert entry.blocked_reason is None
+
+
+def test_blocked_reason_vacio_se_normaliza_a_none(client):
+    response = create(
+        client, {"email": "cliente@example.com", "app_uuid": VALID_UUID, "blocked_reason": ""}
+    )
+
+    assert response.status_code == 201
+    entry = db.session.execute(db.select(BlacklistEntry)).scalar_one()
+    assert entry.blocked_reason is None
+
+
 def test_guarda_la_ip_real_detras_del_proxy(client):
     response = client.post(
         "/blacklists",
@@ -61,6 +93,39 @@ def test_guarda_la_ip_real_detras_del_proxy(client):
     assert response.status_code == 201
     entry = db.session.execute(db.select(BlacklistEntry)).scalar_one()
     assert entry.ip_address == "203.0.113.5"
+
+
+def test_guarda_la_ip_real_con_dos_saltos_de_proxy():
+    """Beanstalk con balanceador de carga: ALB -> nginx -> gunicorn, dos saltos de confianza.
+
+    Con PROXY_X_FOR=2 se debe tomar el penúltimo valor del encabezado (la IP que vio el ALB,
+    es decir, el cliente real), ignorando cualquier valor que el propio cliente haya intentado
+    agregar al inicio del encabezado.
+    """
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "STATIC_TOKEN": "token-de-prueba",
+            "PROXY_X_FOR": 2,
+        }
+    )
+    with app.app_context():
+        db.create_all()
+        client = app.test_client()
+        response = client.post(
+            "/blacklists",
+            data=json.dumps({"email": "cliente@example.com", "app_uuid": VALID_UUID}),
+            content_type="application/json",
+            # El cliente intenta falsear "6.6.6.6"; el ALB agrega la IP real (203.0.113.5) y
+            # nginx agrega la suya propia (10.0.1.20) al reenviar a gunicorn.
+            headers={**AUTH, "X-Forwarded-For": "6.6.6.6, 203.0.113.5, 10.0.1.20"},
+        )
+
+        assert response.status_code == 201
+        entry = db.session.execute(db.select(BlacklistEntry)).scalar_one()
+        assert entry.ip_address == "203.0.113.5"
+        db.drop_all()
 
 
 def test_guarda_fecha_de_la_solicitud(client):

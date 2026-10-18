@@ -40,6 +40,11 @@ class BlacklistCreate(Resource):
                 blocked_reason = self.reason_field.deserialize(blocked_reason)
             except ValidationError as err:
                 errors["blocked_reason"] = err.messages
+            else:
+                # Normaliza "" a None para que ausente, null y cadena vacía se guarden y se
+                # consulten siempre de la misma forma (ver GET /blacklists/<email>).
+                if blocked_reason == "":
+                    blocked_reason = None
 
         if errors:
             return {"message": "Datos inválidos", "errors": errors}, 400

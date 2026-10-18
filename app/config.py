@@ -31,3 +31,7 @@ class Config:
     SQLALCHEMY_DATABASE_URI = _database_uri()
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     STATIC_TOKEN = os.environ.get("STATIC_TOKEN")
+    # Cantidad de proxies de confianza delante de la app, para ProxyFix. En un entorno de
+    # Beanstalk con balanceador de carga hay dos saltos (ALB y luego nginx), así que ahí debe
+    # ser 2; en una instancia única sin balanceador, 1 (el valor por defecto).
+    PROXY_X_FOR = int(os.environ.get("PROXY_X_FOR", "1"))

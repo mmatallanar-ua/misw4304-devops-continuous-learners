@@ -46,6 +46,7 @@ Ver el [contrato y los escenarios de prueba](docs/blacklists-get.md) y la
 | `STATIC_TOKEN` | Bearer token estático que exigen los endpoints protegidos |
 | `DATABASE_URL` | Conexión a PostgreSQL |
 | `RDS_HOSTNAME`, `RDS_PORT`, `RDS_DB_NAME`, `RDS_USERNAME`, `RDS_PASSWORD` | Alternativa a `DATABASE_URL`; las inyecta Beanstalk con RDS asociada |
+| `PROXY_X_FOR` | Saltos de proxy de confianza para calcular la IP real del cliente (`ProxyFix`). `1` (por defecto) para una instancia única; `2` en un entorno con balanceador de carga (ALB + nginx) |
 
 ## Despliegue
 

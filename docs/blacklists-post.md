@@ -14,10 +14,16 @@ Content-Type: application/json
 }
 ```
 
-`email` y `app_uuid` son obligatorios. `blocked_reason` es opcional, máximo 255 caracteres.
-El servicio guarda internamente la IP real del cliente (detrás del balanceador de Beanstalk,
-vía `X-Forwarded-For`) y la fecha/hora UTC de la solicitud; ninguno de los dos se recibe ni se
-devuelve en el cuerpo.
+`email` y `app_uuid` son obligatorios. `blocked_reason` es opcional, máximo 255 caracteres; una
+cadena vacía se normaliza a `null`, igual que si el campo se omite. El servicio guarda
+internamente la IP real del cliente y la fecha/hora UTC de la solicitud; ninguno de los dos se
+recibe ni se devuelve en el cuerpo.
+
+La IP real se calcula con `ProxyFix` y el número de saltos de proxy de confianza configurado en
+`PROXY_X_FOR` (ver [README](../README.md#variables-de-entorno)): debe ser `2` en un entorno de
+Beanstalk con balanceador de carga (ALB + nginx) y `1` en una instancia única. Un valor menor al
+real guarda la IP del proxy en vez de la del cliente; verificar esto contra un registro real en
+RDS al desplegar.
 
 No se exige que el email sea único: dos aplicaciones distintas pueden reportar el mismo email,
 y `GET /blacklists/<email>` siempre resuelve con el registro más reciente.
