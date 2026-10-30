@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Integración continua del microservicio de lista negra (Entrega 2):
+  GitHub (CodeConnections) -> CodePipeline V2 -> CodeBuild -> artefacto zip en S3.
+  Sin etapa de despliegue. Ver docs/adr/0002 y docs/adr/0003.
+
+# Todos los nombres físicos derivan del nombre del stack para que varias copias
+# convivan en la misma cuenta. El nombre del stack debe tener como máximo 29
+# caracteres porque el nombre de la conexión admite 32 (se le agrega "-gh").
+
+Parameters:
+  GitHubOwner:
+    Type: String
+    Default: mmatallanar-ua
+    Description: Usuario u organización dueña del repositorio en GitHub.
+  RepoName:
+    Type: String
+    Default: misw4304-devops-continuous-learners
+    Description: Nombre del repositorio en GitHub.
+  BranchName:
+    Type: String
+    Default: main
+    Description: Rama cuyos push disparan el pipeline.
+  CodeBuildImage:
+    Type: String
+    Default: aws/codebuild/amazonlinux-x86_64-standard:6.0
+    Description: >-
+      Imagen de CodeBuild. Amazon Linux 2023 trae Python 3.14 y coincide con la
+      plataforma de Elastic Beanstalk.
+
+Resources:
+  # ---------------------------------------------------------------------------
+  # Conexión con GitHub. Nace en estado PENDING: un admin del repo debe
+  # aprobarla una vez desde la consola (ver infra/README.md).
+  # ---------------------------------------------------------------------------
+  GitHubConnection:
+    Type: AWS::CodeStarConnections::Connection
+    Properties:
+      ConnectionName: !Sub "${AWS::StackName}-gh"
+      ProviderType: GitHub
+
+  # ---------------------------------------------------------------------------
+  # Artifact store del pipeline. Hay que vaciarlo antes de borrar el stack.
+  # ---------------------------------------------------------------------------
+  ArtifactBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      LifecycleConfiguration:
+        Rules:
+          - Id: expirar-artefactos
+            Status: Enabled
+            ExpirationInDays: 30
+
+  BuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/aws/codebuild/${AWS::StackName}-build"
+      RetentionInDays: 14
+
+  # ---------------------------------------------------------------------------
+  # Grupos de reportes. Se declaran aquí para que delete-stack también los
+  # borre. CodeBuild recibe sus ARN como variables de entorno y el buildspec
+  # los usa como clave de la sección reports (p. ej. $UNIT_REPORT_GROUP_ARN).
+  # ---------------------------------------------------------------------------
+  UnitReportGroup:
+    Type: AWS::CodeBuild::ReportGroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-unit"
+      Type: TEST
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+
+  IntegrationReportGroup:
+    Type: AWS::CodeBuild::ReportGroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-integration"
+      Type: TEST
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+
+  CoverageReportGroup:
+    Type: AWS::CodeBuild::ReportGroup
+    Properties:
+      Name: !Sub "${AWS::StackName}-coverage"
+      Type: CODE_COVERAGE
+      DeleteReports: true
+      ExportConfig:
+        ExportConfigType: NO_EXPORT
+
+  # ---------------------------------------------------------------------------
+  # IAM con mínimo privilegio: cada rol solo toca los recursos de este stack.
+  # ---------------------------------------------------------------------------
+  CodeBuildRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: codebuild-ci
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Logs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource:
+                  - !GetAtt BuildLogGroup.Arn
+                  - !Sub "${BuildLogGroup.Arn}:*"
+              - Sid: Artefactos
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource: !Sub "${ArtifactBucket.Arn}/*"
+              - Sid: Bucket
+                Effect: Allow
+                Action:
+                  - s3:GetBucketAcl
+                  - s3:GetBucketLocation
+                Resource: !GetAtt ArtifactBucket.Arn
+              - Sid: Reportes
+                Effect: Allow
+                Action:
+                  - codebuild:CreateReport
+                  - codebuild:UpdateReport
+                  - codebuild:BatchPutTestCases
+                  - codebuild:BatchPutCodeCoverages
+                Resource:
+                  - !GetAtt UnitReportGroup.Arn
+                  - !GetAtt IntegrationReportGroup.Arn
+                  - !GetAtt CoverageReportGroup.Arn
+
+  CodePipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: codepipeline-ci
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: Artefactos
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                Resource: !Sub "${ArtifactBucket.Arn}/*"
+              - Sid: Bucket
+                Effect: Allow
+                Action:
+                  - s3:GetBucketVersioning
+                  - s3:GetBucketLocation
+                  - s3:ListBucket
+                Resource: !GetAtt ArtifactBucket.Arn
+              # Las conexiones nuevas tienen ARN codeconnections; se incluyen
+              # ambos prefijos de acción por compatibilidad.
+              - Sid: ConexionGitHub
+                Effect: Allow
+                Action:
+                  - codeconnections:UseConnection
+                  - codestar-connections:UseConnection
+                Resource: !Ref GitHubConnection
+              - Sid: Build
+                Effect: Allow
+                Action:
+                  - codebuild:StartBuild
+                  - codebuild:BatchGetBuilds
+                Resource: !GetAtt BuildProject.Arn
+
+  # ---------------------------------------------------------------------------
+  # Build: usa el buildspec.yml de la raíz del repo (HU-E2.3).
+  # ---------------------------------------------------------------------------
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${AWS::StackName}-build"
+      Description: Pruebas unit e integration y empaquetado del zip (sin despliegue).
+      ServiceRole: !GetAtt CodeBuildRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: !Ref CodeBuildImage
+        EnvironmentVariables:
+          - Name: UNIT_REPORT_GROUP_ARN
+            Value: !GetAtt UnitReportGroup.Arn
+          - Name: INTEGRATION_REPORT_GROUP_ARN
+            Value: !GetAtt IntegrationReportGroup.Arn
+          - Name: COVERAGE_REPORT_GROUP_ARN
+            Value: !GetAtt CoverageReportGroup.Arn
+      LogsConfig:
+        CloudWatchLogs:
+          Status: ENABLED
+          GroupName: !Ref BuildLogGroup
+      TimeoutInMinutes: 15
+
+  # ---------------------------------------------------------------------------
+  # Pipeline V2: Source -> Build. El trigger de push filtrado por rama es lo
+  # que hace que cada commit a BranchName lo dispare sin intervención manual.
+  # ---------------------------------------------------------------------------
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${AWS::StackName}-pipeline"
+      PipelineType: V2
+      RoleArn: !GetAtt CodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref ArtifactBucket
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: Source
+              Namespace: SourceVariables
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: "1"
+              Configuration:
+                ConnectionArn: !Ref GitHubConnection
+                FullRepositoryId: !Sub "${GitHubOwner}/${RepoName}"
+                BranchName: !Ref BranchName
+                OutputArtifactFormat: CODE_ZIP
+              OutputArtifacts:
+                - Name: SourceArtifact
+        - Name: Build
+          Actions:
+            - Name: Build
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: "1"
+              Configuration:
+                ProjectName: !Ref BuildProject
+              InputArtifacts:
+                - Name: SourceArtifact
+              OutputArtifacts:
+                - Name: BuildArtifact
+      Triggers:
+        - ProviderType: CodeStarSourceConnection
+          GitConfiguration:
+            SourceActionName: Source
+            Push:
+              - Branches:
+                  Includes:
+                    - !Ref BranchName
+
+Outputs:
+  ConnectionArn:
+    Description: Conexión con GitHub; queda PENDING hasta aprobarla.
+    Value: !Ref GitHubConnection
+  ConnectionApprovalUrl:
+    Description: Página de la consola donde se aprueba la conexión.
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/codesuite/settings/connections?region=${AWS::Region}"
+  ArtifactBucketName:
+    Description: Bucket donde queda el zip (<pipeline>/BuildArtif/<id>).
+    Value: !Ref ArtifactBucket
+  PipelineUrl:
+    Description: Pipeline en la consola.
+    Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${Pipeline}/view?region=${AWS::Region}"
+  BuildProjectName:
+    Value: !Ref BuildProject
+  UnitReportGroupArn:
+    Value: !GetAtt UnitReportGroup.Arn
+  IntegrationReportGroupArn:
+    Value: !GetAtt IntegrationReportGroup.Arn
+  CoverageReportGroupArn:
+    Value: !GetAtt CoverageReportGroup.Arn
