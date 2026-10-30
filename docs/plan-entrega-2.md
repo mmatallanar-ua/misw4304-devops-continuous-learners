@@ -71,7 +71,7 @@
 ### HU-E2.3 · [CI] `buildspec.yml`
 **Responsable:** `mmatallanar-ua` · **Revisa:** alejo · **Para:** sáb 31, 10:00 · **Depende de:** HU-E2.1
 - [ ] Va en la raíz del repo, con las fases `install` → `pre_build` → `build` → `post_build`.
-- [ ] Verificar qué runtime de Python ofrece la imagen de CodeBuild y alinearlo con la plataforma de Beanstalk (la E1 usa Python 3.14). Si no está disponible, usar la versión más cercana y anotarlo en el documento.
+- [ ] Fija `runtime-versions: python: 3.14`, la misma versión de Beanstalk en la E1. Está disponible en la imagen que usa la plantilla (`amazonlinux-x86_64-standard:6.0`).
 - [ ] Instala `requirements.txt` más las dependencias de prueba (`pytest-cov`) desde un `requirements-dev.txt` que no se despliega.
 - [ ] Corre `-m unit` y `-m integration` por separado; cualquier fallo detiene el build.
 - [ ] Publica dos grupos de reportes de CodeBuild (JUnit) y la cobertura (Cobertura XML).
@@ -90,6 +90,7 @@
 
 ### HU-E2.5 · [INF] Pipeline oficial en la cuenta de Victor
 **Responsable:** victor · **Apoyan:** alejo, `mmatallanar-ua` · **Para:** sáb 31, 12:00
+- [ ] **Antes de desplegar (vie 30):** la cuota de builds simultáneos de CodeBuild de la cuenta es al menos 1 (ver `infra/README.md`, "Problemas conocidos"). Si es 0, se usa la cuenta de otro integrante que sí tenga cuota.
 - [ ] El stack (o el plan B) está desplegado apuntando a `mmatallanar-ua/misw4304-devops-continuous-learners`, rama `main`.
 - [ ] `mmatallanar-ua` aprobó la conexión y la app de AWS en GitHub.
 - [ ] Un push a `main` dispara el pipeline sin intervención manual.
@@ -120,9 +121,10 @@
 
 | Riesgo | Mitigación |
 |---|---|
+| **La cuenta tiene en 0 la cuota de CodeBuild** y el *Build* no arranca (`AccountLimitExceededException`). Le pasó a la cuenta de alejo el vie 30 y AWS rechazó el aumento por ser una cuenta nueva. El plan B por consola **no** lo resuelve | Cada integrante revisa su cuota el vie 30 (HU-E2.5). El pipeline oficial va en la primera cuenta con cuota ≥ 1, empezando por la de Victor |
 | CloudFormation o la conexión con GitHub se atascan | Plan B por consola a las 12:00 del sábado (ADR-0002) |
 | Los mocks no llegan a tiempo | Corte a las 18:00 del sábado; se entrega con `integration` (ADR-0001) |
 | `-m integration` no encuentra pruebas y el build falla | HU-E2.1 se fusiona antes que HU-E2.3 |
-| La imagen de CodeBuild no tiene Python 3.14 | Se usa la versión más cercana y se documenta (HU-E2.3) |
+| ~~La imagen de CodeBuild no tiene Python 3.14~~ | **Resuelto:** Amazon Linux 2023 `standard:6.0` trae 3.14 por defecto |
 | Beanstalk de la E1 apagado o sin RDS el domingo | Victor lo verifica el viernes y de nuevo el domingo antes de grabar |
 | Costos de la cuenta propia | `delete-stack` después de la calificación; Beanstalk y RDS se apagan cuando el tutor lo confirme |
