@@ -1,7 +1,7 @@
 # ADR-0003: CodePipeline con artefacto zip en S3
 
 ## Status
-Accepted
+Accepted. La decisión del artefacto fue reemplazada por el [ADR-0004](0004-imagen-docker-en-ecr-y-dockerrun-como-artefacto.md).
 
 ## Date
 2026-10-30

@@ -9,7 +9,7 @@
 |---|---|---|
 | Al menos una prueba unitaria por endpoint | 30% | HU-E2.1, HU-E2.2 ([ADR-0001](adr/0001-estrategia-de-pruebas-hibrida.md)) |
 | Build en AWS CodeBuild | 10% | HU-E2.4, HU-E2.5 |
-| Archivos de build en el repo: pruebas + artefacto, sin desplegar | 25% | HU-E2.3 ([ADR-0003](adr/0003-codepipeline-y-artefacto-zip-en-s3.md)) |
+| Archivos de build en el repo: pruebas + artefacto, sin desplegar | 25% | HU-E2.3 ([ADR-0003](adr/0003-codepipeline-y-artefacto-zip-en-s3.md), [ADR-0004](adr/0004-imagen-docker-en-ecr-y-dockerrun-como-artefacto.md)) |
 | El pipeline se dispara con cada commit a `main` | 15% | HU-E2.4, HU-E2.5 ([ADR-0002](adr/0002-cloudformation-para-la-infraestructura-de-ci.md)) |
 | Documento: 1 pipeline exitoso y 1 fallido, con capturas | 20% | HU-E2.6, HU-E2.7 |
 | Video de máximo 10 min (sin él, la nota es 0.0) | obligatorio | HU-E2.8 |
@@ -19,7 +19,7 @@
 ## Decisiones
 
 - **Pipeline:** CodePipeline con *Source* (GitHub vía CodeConnections, rama `main`) y *Build* (CodeBuild). No tiene etapa de *Deploy*.
-- **Artefacto:** zip con el código y un archivo `VERSION` (SHA del commit), guardado en el *artifact store* del pipeline en S3. Copiarlo como `releases/blacklist-<sha>.zip` es opcional.
+- **Artefacto:** `Dockerrun.aws.json` v1 apuntando a la imagen `<ecr-uri>:<sha>` en ECR, con un archivo `VERSION` (SHA del commit), guardado en el *artifact store* del pipeline en S3 ([ADR-0004](adr/0004-imagen-docker-en-ecr-y-dockerrun-como-artefacto.md)).
 - **Pruebas:** dos grupos, `unit` (mocks de `db.session`) e `integration` (SQLite en memoria). Ambos corren en CodeBuild con reportes JUnit y de cobertura, sin umbral mínimo.
 - **Infraestructura de CI:** `infra/ci-pipeline.yml` (CloudFormation) con parámetros de repo y rama. Beanstalk y RDS de la E1 no se tocan.
 - **Cuenta:** el pipeline oficial va en la cuenta de Victor. Las copias individuales y el IAM compartido quedan para después de la entrega.
@@ -71,7 +71,7 @@
 ### HU-E2.3 · [CI] `buildspec.yml`
 **Responsable:** `mmatallanar-ua` · **Revisa:** alejo · **Para:** sáb 31, 10:00 · **Depende de:** HU-E2.1
 - [ ] Va en la raíz del repo, con las fases `install` → `pre_build` → `build` → `post_build`.
-- [ ] Fija `runtime-versions: python: 3.14`, la misma versión de Beanstalk en la E1. Está disponible en la imagen que usa la plantilla (`amazonlinux-x86_64-standard:6.0`).
+- [ ] Fija `runtime-versions: python: 3.13`, la misma versión que el `Dockerfile` ([ADR-0004](adr/0004-imagen-docker-en-ecr-y-dockerrun-como-artefacto.md)).
 - [ ] Instala `requirements.txt` más las dependencias de prueba (`pytest-cov`) desde un `requirements-dev.txt` que no se despliega.
 - [ ] Corre `-m unit` y `-m integration` por separado; cualquier fallo detiene el build.
 - [ ] Publica dos grupos de reportes de CodeBuild (JUnit) y la cobertura (Cobertura XML).
