@@ -14,4 +14,5 @@ COPY application.py .
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "application:application"]
+# init-db crea las tablas si no existen (idempotente), como hacía .ebextensions en Beanstalk.
+CMD ["sh", "-c", "flask --app application init-db && exec gunicorn --bind 0.0.0.0:5000 application:application"]
