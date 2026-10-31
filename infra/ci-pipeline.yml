@@ -1,8 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: >-
   Integración continua del microservicio de lista negra (Entrega 2):
-  GitHub (CodeConnections) -> CodePipeline V2 -> CodeBuild -> artefacto zip en S3.
-  Sin etapa de despliegue. Ver docs/adr/0002 y docs/adr/0003.
+  GitHub (CodeConnections) -> CodePipeline V2 -> CodeBuild -> imagen Docker en ECR
+  y Dockerrun.aws.json como artefacto en S3. Sin etapa de despliegue.
+  Ver docs/adr/0002, docs/adr/0003 y docs/adr/0004.
 
 # Todos los nombres físicos derivan del nombre del stack para que varias copias
 # convivan en la misma cuenta. El nombre del stack debe tener como máximo 29
@@ -23,10 +24,10 @@ Parameters:
     Description: Rama cuyos push disparan el pipeline.
   CodeBuildImage:
     Type: String
-    Default: aws/codebuild/amazonlinux-x86_64-standard:6.0
+    Default: aws/codebuild/standard:7.0
     Description: >-
-      Imagen de CodeBuild. Amazon Linux 2023 trae Python 3.14 y coincide con la
-      plataforma de Elastic Beanstalk.
+      Imagen de CodeBuild. Trae Docker y Python 3.13 (la versión del buildspec
+      y del Dockerfile); es la que se probó de punta a punta.
 
 Resources:
   # ---------------------------------------------------------------------------
@@ -63,6 +64,24 @@ Resources:
             Status: Enabled
             ExpirationInDays: 30
 
+  # ---------------------------------------------------------------------------
+  # Repositorio de imágenes. Tags mutables porque el buildspec empuja :<sha> y
+  # :latest, y relanzar el pipeline sobre el mismo commit no debe fallar.
+  # EmptyOnDelete permite que delete-stack lo borre aunque tenga imágenes.
+  # ---------------------------------------------------------------------------
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      ImageTagMutability: MUTABLE
+      EmptyOnDelete: true
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {"rules":[{"rulePriority":1,"description":"Conservar las ultimas 10 imagenes","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":10},"action":{"type":"expire"}}]}
+
   BuildLogGroup:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
@@ -72,33 +91,16 @@ Resources:
       RetentionInDays: 14
 
   # ---------------------------------------------------------------------------
-  # Grupos de reportes. Se declaran aquí para que delete-stack también los
-  # borre. CodeBuild recibe sus ARN como variables de entorno y el buildspec
-  # los usa como clave de la sección reports (p. ej. $UNIT_REPORT_GROUP_ARN).
+  # Grupo de reportes de pytest. El buildspec usa `reports: pytest:` y CodeBuild
+  # nombra ese grupo "<proyecto>-pytest"; al declararlo con ese nombre exacto,
+  # CodeBuild lo reutiliza en vez de crear uno fuera del stack, y delete-stack
+  # lo borra con el resto. El nombre del proyecto es "<stack>-build".
   # ---------------------------------------------------------------------------
-  UnitReportGroup:
+  TestReportGroup:
     Type: AWS::CodeBuild::ReportGroup
     Properties:
-      Name: !Sub "${AWS::StackName}-unit"
+      Name: !Sub "${AWS::StackName}-build-pytest"
       Type: TEST
-      DeleteReports: true
-      ExportConfig:
-        ExportConfigType: NO_EXPORT
-
-  IntegrationReportGroup:
-    Type: AWS::CodeBuild::ReportGroup
-    Properties:
-      Name: !Sub "${AWS::StackName}-integration"
-      Type: TEST
-      DeleteReports: true
-      ExportConfig:
-        ExportConfigType: NO_EXPORT
-
-  CoverageReportGroup:
-    Type: AWS::CodeBuild::ReportGroup
-    Properties:
-      Name: !Sub "${AWS::StackName}-coverage"
-      Type: CODE_COVERAGE
       DeleteReports: true
       ExportConfig:
         ExportConfigType: NO_EXPORT
@@ -151,11 +153,22 @@ Resources:
                   - codebuild:CreateReport
                   - codebuild:UpdateReport
                   - codebuild:BatchPutTestCases
-                  - codebuild:BatchPutCodeCoverages
-                Resource:
-                  - !GetAtt UnitReportGroup.Arn
-                  - !GetAtt IntegrationReportGroup.Arn
-                  - !GetAtt CoverageReportGroup.Arn
+                Resource: !GetAtt TestReportGroup.Arn
+              - Sid: EcrLogin
+                Effect: Allow
+                Action: ecr:GetAuthorizationToken
+                Resource: "*"
+              - Sid: EcrPush
+                Effect: Allow
+                Action:
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:InitiateLayerUpload
+                  - ecr:UploadLayerPart
+                  - ecr:CompleteLayerUpload
+                  - ecr:PutImage
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                Resource: !GetAtt EcrRepository.Arn
 
   CodePipelineRole:
     Type: AWS::IAM::Role
@@ -211,7 +224,7 @@ Resources:
     Type: AWS::CodeBuild::Project
     Properties:
       Name: !Sub "${AWS::StackName}-build"
-      Description: Pruebas unit e integration y empaquetado del zip (sin despliegue).
+      Description: Pruebas, imagen Docker en ECR y Dockerrun.aws.json como artefacto (sin despliegue).
       ServiceRole: !GetAtt CodeBuildRole.Arn
       Source:
         Type: CODEPIPELINE
@@ -222,13 +235,14 @@ Resources:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
         Image: !Ref CodeBuildImage
+        # Necesario para `docker build` dentro de CodeBuild.
+        PrivilegedMode: true
         EnvironmentVariables:
-          - Name: UNIT_REPORT_GROUP_ARN
-            Value: !GetAtt UnitReportGroup.Arn
-          - Name: INTEGRATION_REPORT_GROUP_ARN
-            Value: !GetAtt IntegrationReportGroup.Arn
-          - Name: COVERAGE_REPORT_GROUP_ARN
-            Value: !GetAtt CoverageReportGroup.Arn
+          # Las lee el buildspec para armar la URI de la imagen.
+          - Name: AWS_ACCOUNT_ID
+            Value: !Ref AWS::AccountId
+          - Name: IMAGE_REPO_NAME
+            Value: !Ref EcrRepository
       LogsConfig:
         CloudWatchLogs:
           Status: ENABLED
@@ -296,16 +310,15 @@ Outputs:
     Description: Página de la consola donde se aprueba la conexión.
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/codesuite/settings/connections?region=${AWS::Region}"
   ArtifactBucketName:
-    Description: Bucket donde queda el zip (<pipeline>/BuildArtif/<id>).
+    Description: Bucket donde queda el Dockerrun.aws.json (<pipeline>/BuildArtif/<id>).
     Value: !Ref ArtifactBucket
   PipelineUrl:
     Description: Pipeline en la consola.
     Value: !Sub "https://${AWS::Region}.console.aws.amazon.com/codesuite/codepipeline/pipelines/${Pipeline}/view?region=${AWS::Region}"
   BuildProjectName:
     Value: !Ref BuildProject
-  UnitReportGroupArn:
-    Value: !GetAtt UnitReportGroup.Arn
-  IntegrationReportGroupArn:
-    Value: !GetAtt IntegrationReportGroup.Arn
-  CoverageReportGroupArn:
-    Value: !GetAtt CoverageReportGroup.Arn
+  EcrRepositoryUri:
+    Description: Repositorio donde el build publica la imagen (:<sha> y :latest).
+    Value: !GetAtt EcrRepository.RepositoryUri
+  TestReportGroupArn:
+    Value: !GetAtt TestReportGroup.Arn

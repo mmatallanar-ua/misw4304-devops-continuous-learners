@@ -4,23 +4,26 @@
 microservicio en una cuenta de AWS:
 
 ```
-GitHub (push a main) ──► CodePipeline V2 ──► CodeBuild ──► zip en S3
-       CodeConnections      Source → Build      buildspec.yml    artifact store
+GitHub (push a main) ──► CodePipeline V2 ──► CodeBuild ──► imagen en ECR + Dockerrun.aws.json en S3
+       CodeConnections      Source → Build      buildspec.yml    (artifact store)
 ```
 
-No hay etapa de despliegue: el zip se genera, pero no se instala en Elastic Beanstalk. El entorno
-de Beanstalk y la RDS de la Entrega 1 no se tocan. Las decisiones están en
-[ADR-0002](../docs/adr/0002-cloudformation-para-la-infraestructura-de-ci.md) y
-[ADR-0003](../docs/adr/0003-codepipeline-y-artefacto-zip-en-s3.md).
+No hay etapa de despliegue: se publica la imagen y se genera el `Dockerrun.aws.json`, pero nada se
+instala en Elastic Beanstalk (el despliegue es manual). Las decisiones están en
+[ADR-0002](../docs/adr/0002-cloudformation-para-la-infraestructura-de-ci.md),
+[ADR-0003](../docs/adr/0003-codepipeline-y-artefacto-zip-en-s3.md) y
+[ADR-0004](../docs/adr/0004-imagen-docker-en-ecr-y-dockerrun-como-artefacto.md), que reemplaza al
+ADR-0003 en el artefacto.
 
 ## Qué crea
 
 | Recurso | Nombre | Para qué |
 |---|---|---|
 | Conexión CodeConnections | `<stack>-gh` | Leer el repo y recibir los push de GitHub |
-| Bucket S3 | generado por CloudFormation | *Artifact store*: código fuente y zip del build. Los objetos vencen a los 30 días |
-| Proyecto CodeBuild | `<stack>-build` | Corre el `buildspec.yml` de la raíz del repo |
-| Grupos de reportes | `<stack>-unit`, `<stack>-integration`, `<stack>-coverage` | Reportes JUnit y de cobertura |
+| Repositorio ECR | generado por CloudFormation | Imágenes `:<sha>` y `:latest`. Tags mutables, conserva las últimas 10 y se borra con el stack aunque tenga imágenes |
+| Bucket S3 | generado por CloudFormation | *Artifact store*: código fuente y `Dockerrun.aws.json` del build. Los objetos vencen a los 30 días |
+| Proyecto CodeBuild | `<stack>-build` | Corre el `buildspec.yml` de la raíz del repo, con modo privilegiado para `docker build` |
+| Grupo de reportes | `<stack>-build-pytest` | Reporte JUnit de las pruebas |
 | Log group | `/aws/codebuild/<stack>-build` | Logs del build, 14 días |
 | Pipeline V2 | `<stack>-pipeline` | *Source* → *Build*, disparado por push a `BranchName` |
 | 2 roles IAM | generados | Permisos mínimos, solo sobre los recursos de este stack |
@@ -32,38 +35,26 @@ de Beanstalk y la RDS de la Entrega 1 no se tocan. Las decisiones están en
 | `GitHubOwner` | `mmatallanar-ua` | Pon tu usuario si apuntas a tu *fork* |
 | `RepoName` | `misw4304-devops-continuous-learners` | |
 | `BranchName` | `main` | Solo los push a esta rama disparan el pipeline |
-| `CodeBuildImage` | `aws/codebuild/amazonlinux-x86_64-standard:6.0` | Amazon Linux 2023 con Python 3.14, igual que Beanstalk |
+| `CodeBuildImage` | `aws/codebuild/standard:7.0` | Trae Docker y Python 3.13, igual que el `Dockerfile` |
 
 El nombre del stack debe tener **como máximo 29 caracteres** (el nombre de la conexión se arma
 con `<stack>-gh` y AWS admite 32).
 
 ## Contrato con el `buildspec.yml`
 
-CodeBuild recibe estas variables de entorno con los ARN de los grupos de reportes. El buildspec
-debe usarlas como clave de `reports:`; si usa un nombre suelto, CodeBuild crea un grupo nuevo
-fuera del stack que `delete-stack` no borra.
+CodeBuild recibe estas variables de entorno, que el buildspec usa para armar la URI de la imagen:
 
-| Variable | Tipo de grupo | Formato sugerido |
-|---|---|---|
-| `UNIT_REPORT_GROUP_ARN` | `TEST` | `JUNITXML` |
-| `INTEGRATION_REPORT_GROUP_ARN` | `TEST` | `JUNITXML` |
-| `COVERAGE_REPORT_GROUP_ARN` | `CODE_COVERAGE` | `COBERTURAXML` |
+| Variable | Valor |
+|---|---|
+| `AWS_ACCOUNT_ID` | Cuenta donde corre el stack |
+| `IMAGE_REPO_NAME` | Nombre del repositorio ECR creado por la plantilla |
 
-```yaml
-reports:
-  $UNIT_REPORT_GROUP_ARN:
-    files: [unit.xml]
-    base-directory: reports
-    file-format: JUNITXML
-  $INTEGRATION_REPORT_GROUP_ARN:
-    files: [integration.xml]
-    base-directory: reports
-    file-format: JUNITXML
-  $COVERAGE_REPORT_GROUP_ARN:
-    files: [coverage.xml]
-    base-directory: reports
-    file-format: COBERTURAXML
-```
+El buildspec usa `reports: pytest:`. CodeBuild nombra ese grupo `<proyecto>-pytest`, que es
+exactamente el nombre del grupo que declara la plantilla (`<stack>-build-pytest`), así que lo reutiliza
+y `delete-stack` lo borra. Si se cambia la clave `pytest`, hay que cambiar también el nombre del grupo.
+
+El buildspec escribe `Dockerrun.aws.json` y `VERSION` solo si las pruebas pasaron; el rol de CodeBuild
+solo puede empujar imágenes a este repositorio.
 
 ## Levantar una copia
 
@@ -110,16 +101,19 @@ Haz un push (o fusiona un PR) a `BranchName`. El pipeline debe arrancar en segun
 aws codepipeline start-pipeline-execution --name blacklist-ci-pipeline
 ```
 
-## Encontrar el zip
+## Encontrar el artefacto y la imagen
 
-CodePipeline guarda el artefacto con un nombre aleatorio y sin extensión:
+CodePipeline guarda el artefacto (un zip con `Dockerrun.aws.json` y `VERSION`) con un nombre
+aleatorio y sin extensión. La imagen está en ECR:
 
 ```bash
 BUCKET=$(aws cloudformation describe-stacks --stack-name blacklist-ci \
   --query "Stacks[0].Outputs[?OutputKey=='ArtifactBucketName'].OutputValue" --output text)
 aws s3 ls "s3://$BUCKET/blacklist-ci-pipe/BuildArtif/" --human-readable
 aws s3 cp "s3://$BUCKET/blacklist-ci-pipe/BuildArtif/<id>" artefacto.zip
-unzip -p artefacto.zip VERSION   # SHA del commit que lo generó
+unzip -p artefacto.zip VERSION               # SHA del commit que lo generó
+unzip -p artefacto.zip Dockerrun.aws.json    # apunta a <ecr-uri>:<sha>
+aws ecr describe-images --repository-name <repo> --query 'imageDetails[].imageTags'
 ```
 
 El prefijo de carpeta es el nombre del pipeline truncado a 20 caracteres. Desde la consola: en la
@@ -127,7 +121,7 @@ ejecución del pipeline, acción *Build* → **Details** → **Artifacts**.
 
 ## Borrar todo
 
-El bucket debe estar vacío para que CloudFormation pueda borrarlo:
+El bucket debe estar vacío para que CloudFormation pueda borrarlo (el repositorio ECR se vacía solo):
 
 ```bash
 aws s3 rm "s3://$BUCKET" --recursive
@@ -158,5 +152,5 @@ cuenta.
 ## Costos
 
 Con el uso de la entrega cuesta centavos: CodePipeline V2 cobra por minuto de acción (100
-minutos gratis al mes), CodeBuild por minuto de build (`BUILD_GENERAL1_SMALL`) y S3/CloudWatch
-casi nada gracias a la expiración de 30 y 14 días. Borra el stack cuando ya no lo necesites.
+minutos gratis al mes), CodeBuild por minuto de build (`BUILD_GENERAL1_SMALL`) y S3, ECR (10 imágenes)
+y CloudWatch casi nada gracias a la expiración de 30 y 14 días. Borra el stack cuando ya no lo necesites.
