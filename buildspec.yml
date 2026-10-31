@@ -7,12 +7,19 @@ phases:
   pre_build:
     commands:
       - pip install -r requirements.txt
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
   build:
     commands:
       - python -m pytest tests -v --junitxml=pytest-report.xml
+      - echo Building the Docker image...
+      - docker build -t $IMAGE_URI:$IMAGE_TAG -t $IMAGE_URI:latest .
   post_build:
     commands:
-      - echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" > VERSION
+      # post_build corre aunque falle build; solo se publica la imagen si las pruebas pasaron.
+      - if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then docker push $IMAGE_URI:$IMAGE_TAG && docker push $IMAGE_URI:latest && echo "$IMAGE_URI:$IMAGE_TAG" > image-uri.txt; fi
 
 reports:
   pytest:
@@ -22,10 +29,4 @@ reports:
 
 artifacts:
   files:
-    - '**/*'
-  exclude-paths:
-    - '.git/**/*'
-    - 'tests/**/*'
-    - 'docs/**/*'
-    - 'scripts/**/*'
-    - 'pytest-report.xml'
+    - image-uri.txt
