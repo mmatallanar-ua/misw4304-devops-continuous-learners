@@ -1,0 +1,30 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.13
+    commands:
+      - pip install -r requirements.txt
+  build:
+    commands:
+      - python -m pytest tests -v --junitxml=pytest-report.xml
+  post_build:
+    commands:
+      - echo "$CODEBUILD_RESOLVED_SOURCE_VERSION" > VERSION
+
+reports:
+  pytest:
+    files:
+      - pytest-report.xml
+    file-format: JUNITXML
+
+artifacts:
+  files:
+    - '**/*'
+  exclude-paths:
+    - '.git/**/*'
+    - 'tests/**/*'
+    - 'docs/**/*'
+    - 'scripts/**/*'
+    - 'pytest-report.xml'
