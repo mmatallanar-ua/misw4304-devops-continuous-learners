@@ -24,7 +24,7 @@ class BlacklistCreate(Resource):
         },
     )
     reason_field = fields.String(
-        validate=validate.Length(max=300, error="No puede superar los 255 caracteres."),
+        validate=validate.Length(max=255, error="No puede superar los 255 caracteres."),
         error_messages={"invalid": "Debe ser una cadena de texto."},
     )
 
