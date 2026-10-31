@@ -19,7 +19,13 @@ phases:
   post_build:
     commands:
       # post_build corre aunque falle build; solo se publica la imagen si las pruebas pasaron.
-      - if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then docker push $IMAGE_URI:$IMAGE_TAG && docker push $IMAGE_URI:latest && echo "$IMAGE_URI:$IMAGE_TAG" > image-uri.txt; fi
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+          docker push $IMAGE_URI:$IMAGE_TAG
+          docker push $IMAGE_URI:latest
+          printf '{"AWSEBDockerrunVersion":"1","Image":{"Name":"%s","Update":"false"},"Ports":[{"ContainerPort":5000}]}\n' "$IMAGE_URI:$IMAGE_TAG" > Dockerrun.aws.json
+          echo $CODEBUILD_RESOLVED_SOURCE_VERSION > VERSION
+        fi
 
 reports:
   pytest:
@@ -29,4 +35,5 @@ reports:
 
 artifacts:
   files:
-    - image-uri.txt
+    - Dockerrun.aws.json
+    - VERSION
