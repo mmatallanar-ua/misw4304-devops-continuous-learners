@@ -1,0 +1,39 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.13
+  pre_build:
+    commands:
+      - pip install -r requirements.txt
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  build:
+    commands:
+      - python -m pytest tests -v --junitxml=pytest-report.xml
+      - echo Building the Docker image...
+      - docker build -t $IMAGE_URI:$IMAGE_TAG -t $IMAGE_URI:latest .
+  post_build:
+    commands:
+      # post_build corre aunque falle build; solo se publica la imagen si las pruebas pasaron.
+      - |
+        if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
+          docker push $IMAGE_URI:$IMAGE_TAG
+          docker push $IMAGE_URI:latest
+          printf '{"AWSEBDockerrunVersion":"1","Image":{"Name":"%s","Update":"false"},"Ports":[{"ContainerPort":5000}]}\n' "$IMAGE_URI:$IMAGE_TAG" > Dockerrun.aws.json
+          echo $CODEBUILD_RESOLVED_SOURCE_VERSION > VERSION
+        fi
+
+reports:
+  pytest:
+    files:
+      - pytest-report.xml
+    file-format: JUNITXML
+
+artifacts:
+  files:
+    - Dockerrun.aws.json
+    - VERSION
