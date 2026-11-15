@@ -44,5 +44,5 @@ El pipeline `blacklist-ci-pipeline` se dispara con cada push a `main` y tiene tr
 el tráfico directo al contenedor (un solo salto de proxy).
 
 `GET /ping` informa la versión desplegada (`version` = SHA corto del commit), lo que permite ver
-en Postman cuándo el tráfico pasa a la versión nueva. Para probar contra AWS se usa el environment
-`docs/postman/blacklist-api.fargate.postman_environment.json`, completando `token`.
+en Postman cuándo el tráfico pasa a la versión nueva. Para probar contra AWS basta con cambiar
+`base_url` (DNS del balanceador) y `token` en el environment de Postman.
