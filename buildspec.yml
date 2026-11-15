@@ -11,6 +11,9 @@ phases:
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
       - IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      # Se escribe antes del docker build para que quede dentro de la imagen: /ping lo informa
+      # y así se distingue qué versión (blue o green) atiende cada solicitud.
+      - echo $IMAGE_TAG > VERSION
   build:
     commands:
       - python -m pytest tests -v --junitxml=pytest-report.xml
@@ -23,8 +26,9 @@ phases:
         if [ "$CODEBUILD_BUILD_SUCCEEDING" = "1" ]; then
           docker push $IMAGE_URI:$IMAGE_TAG
           docker push $IMAGE_URI:latest
-          printf '{"AWSEBDockerrunVersion":"1","Image":{"Name":"%s","Update":"false"},"Ports":[{"ContainerPort":5000}]}\n' "$IMAGE_URI:$IMAGE_TAG" > Dockerrun.aws.json
-          echo $CODEBUILD_RESOLVED_SOURCE_VERSION > VERSION
+          # imageDetail.json lo usa la acción de CodeDeploy (ECS Blue/Green) del pipeline para
+          # reemplazar <IMAGE1_NAME> en taskdef.json con la imagen de este commit.
+          printf '{"ImageURI":"%s"}\n' "$IMAGE_URI:$IMAGE_TAG" > imageDetail.json
         fi
 
 reports:
@@ -35,5 +39,6 @@ reports:
 
 artifacts:
   files:
-    - Dockerrun.aws.json
-    - VERSION
+    - imageDetail.json
+    - taskdef.json
+    - appspec.json

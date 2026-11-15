@@ -1,0 +1,47 @@
+{
+  "family": "blacklist-api",
+  "executionRoleArn": "arn:aws:iam::396535942596:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "cpu": "256",
+  "memory": "512",
+  "containerDefinitions": [
+    {
+      "name": "blacklist-api",
+      "image": "<IMAGE1_NAME>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 5000,
+          "hostPort": 5000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "PROXY_X_FOR", "value": "1" }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:ssm:us-east-1:396535942596:parameter/blacklist/DATABASE_URL"
+        },
+        {
+          "name": "STATIC_TOKEN",
+          "valueFrom": "arn:aws:ssm:us-east-1:396535942596:parameter/blacklist/STATIC_TOKEN"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/blacklist-api",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "blacklist-api"
+        }
+      }
+    }
+  ]
+}

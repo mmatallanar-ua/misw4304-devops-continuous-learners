@@ -10,7 +10,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY application.py .
+# VERSION lo genera el buildspec (SHA corto del commit); el comodín evita fallar en un build local sin él.
+COPY application.py VERSION* ./
 
 EXPOSE 5000
 
