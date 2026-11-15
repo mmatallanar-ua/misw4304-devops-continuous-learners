@@ -31,7 +31,7 @@
         },
         {
           "name": "STATIC_TOKEN",
-          "valueFrom": "arn:aws:ssm:us-east-1:396535942596:parameter/blacklist/STATIC_TOKEN_INEXISTENTE"
+          "valueFrom": "arn:aws:ssm:us-east-1:396535942596:parameter/blacklist/STATIC_TOKEN"
         }
       ],
       "logConfiguration": {
