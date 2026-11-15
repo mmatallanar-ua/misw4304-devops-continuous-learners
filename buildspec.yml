@@ -11,12 +11,13 @@ phases:
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
       - IMAGE_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME
       - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      # Se escribe antes del docker build para que quede dentro de la imagen: /ping lo informa
-      # y así se distingue qué versión (blue o green) atiende cada solicitud.
-      - echo $IMAGE_TAG > VERSION
   build:
     commands:
       - python -m pytest tests -v --junitxml=pytest-report.xml
+      # VERSION se escribe después de las pruebas (que esperan "dev" sin el archivo) y antes del
+      # docker build, para que quede dentro de la imagen: /ping lo informa y así se distingue qué
+      # versión (blue o green) atiende cada solicitud.
+      - echo $IMAGE_TAG > VERSION
       - echo Building the Docker image...
       - docker build -t $IMAGE_URI:$IMAGE_TAG -t $IMAGE_URI:latest .
   post_build:
